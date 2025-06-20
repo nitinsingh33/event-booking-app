@@ -19,4 +19,10 @@ Includes user registration/login, booking logic, and admin dashboard.
 - [ ] Deployment on Railway/Vercel
 
 
+## 🧑‍💻 Developed By
+- **Nitin Singh** (IIT Patna)
+
+## 🌐 Live Demo
+Coming soon...
+
 
