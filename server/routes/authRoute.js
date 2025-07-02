@@ -4,17 +4,18 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
+// Health check route (optional but useful)
 router.post("/check", (req, res) => {
   console.log("Check route body:", req.body);
   res.send("Check route hit");
 });
 
-
+// User registration route
 router.post("/register", async (req, res) => {
     console.log(" req.body:", req.body); 
     const { name, email, password } = req.body;
 
-    // Validate
+    // Input Validation
     if (!name || !email || !password) {
         return res.status(400).json({ message: "All fields are required."});
     }
