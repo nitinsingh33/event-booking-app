@@ -13,20 +13,30 @@ export default function Signup() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
+
+    const { name, email, password, confirmPassword } = formData;
+
+    if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/signup', formData);
-      localStorage.setItem('user', JSON.stringify(data));
-       navigate('/');
-      
+      const res = await axios.post('http://localhost:5000/api/auth/signup', {
+        name,
+        email,
+        password,
+      });
+
+      if (res.status === 201) {
+        // Save only relevant data
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        navigate('/');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed');
     }
@@ -36,26 +46,39 @@ export default function Signup() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
+
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-        {['name', 'email', 'password', 'confirmPassword'].map((field) => (
+        {[
+          { name: 'name', type: 'text', placeholder: 'Full Name' },
+          { name: 'email', type: 'email', placeholder: 'Email' },
+          { name: 'password', type: 'password', placeholder: 'Password' },
+          { name: 'confirmPassword', type: 'password', placeholder: 'Confirm Password' },
+        ].map(({ name, type, placeholder }) => (
           <input
-            key={field}
-            type={field.includes('password') ? 'password' : field}
-            name={field}
-            placeholder={field === 'confirmPassword' ? 'Confirm Password' : field.charAt(0).toUpperCase() + field.slice(1)}
+            key={name}
+            type={type}
+            name={name}
+            placeholder={placeholder}
             className="w-full mb-4 px-4 py-2 border rounded"
+            value={formData[name]}
             onChange={handleChange}
             required
           />
         ))}
 
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition duration-200"
+        >
           Create Account
         </button>
 
         <p className="text-center text-sm mt-4">
-          Already have an account? <Link to="/login" className="text-blue-600">Login</Link>
+          Already have an account?{' '}
+          <Link to="/login" className="text-blue-600 hover:underline">
+            Login
+          </Link>
         </p>
       </form>
     </div>
