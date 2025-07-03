@@ -18,6 +18,7 @@ Includes user registration/login, booking logic, and admin dashboard.
 - [ ] Authentication with JWT
 - [ ] Deployment on Railway/Vercel
 
+📝 Used MongoDB Atlas (cloud-based NoSQL DB) for scalable, secure data storage. Managed real-time data via MongoDB Compass for easier testing and debugging.
 
 ## 🧑‍💻 Developed By
 - **Nitin Singh** (IIT Patna)
