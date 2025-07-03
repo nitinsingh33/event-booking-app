@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
-import Register from './pages/Register';
+import RegisterEvent from './pages/RegisterEvent';
 import ForgotPassword from './pages/ForgotPassword';
 
 function App() {
@@ -13,7 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/register-event" element={<RegisterEvent />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
       </Routes>

@@ -33,6 +33,12 @@ export default function Navbar() {
         >
           Home
         </Link>
+        <Link
+          to="/register-event"
+          className= "px-3 py-2 rounded hover:bg-gray-700"
+        >
+          Register Event
+        </Link>
 
         {!user ? (
           <>

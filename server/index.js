@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import authRoute from "./routes/authRoute.js";
 import testRoute from "./routes/testRoute.js";
+import eventRoute from "./routes/eventRoute.js";
 
 dotenv.config();
 const app = express();
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 // ✅ ROUTES
 app.use("/api/auth", authRoute);
 app.use("/api/test", testRoute);
+app.use("/api/event", eventRoute);
 
 // ✅ DATABASE + SERVER
 mongoose
