@@ -42,6 +42,23 @@ router.post("/register", async (req, res) => {
     }
 });
 
+// POST /api/auth/signup
+router.post('/signup', (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  // 👉 Dummy success response
+  res.status(201).json({
+    id: Date.now(),
+    name,
+    email,
+    token: 'dummy-jwt-token'
+  });
+});
+
 // 🔐 Login Route - ADD THIS
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -66,7 +83,7 @@ router.post("/login", async (req, res) => {
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET || "secret123",
       { expiresIn: "7d" }
-    );npm
+    );
 
     res.status(200).json({ message: "Login successful", token });
   } catch (err) {
