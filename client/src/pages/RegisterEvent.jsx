@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { toast } from 'react-toastify';
 import axios from 'axios';
+import { useNavigate } from "react-router-dom"; // ✅ navigate added
 
 export default function RegisterEvent() {
   const [formData, setFormData] = useState({
@@ -15,33 +17,49 @@ export default function RegisterEvent() {
     agree: false,
   });
 
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const navigate = useNavigate(); // ✅ initialize navigate
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]:type === 'checkbox' ? checked : value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.agree) return setError('You must agree to terms.');
+    if (!formData.agree) {
+      toast.error("⚠️ You must agree to the terms.");
+      return;
+    }
 
     try {
       const res = await axios.post('http://localhost:5000/api/event/register', formData);
+
       if (res.status === 201) {
-        setSuccess('Registration successfull!');
+        toast.success("Registration successful!");
+
         setFormData({
-          fullName: '', email: '', phone: '', eventName: '', date: '', timeSlot: '', college: '', seats: 1, comments: '', agree: false
+          fullName: '',
+          email: '',
+          phone: '',
+          eventName: '',
+          date: '',
+          timeSlot: '',
+          college: '',
+          seats: 1,
+          comments: '',
+          agree: false,
         });
-        setError('');
+
+        setTimeout(() => {
+          navigate('/');
+        }, 1500);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || '❌ Registration failed');
     }
   };
 
@@ -51,9 +69,6 @@ export default function RegisterEvent() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md w-full max-w-lg">
         <h2 className="text-2xl font-bold mb-6 text-center">Event Registration</h2>
-
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-        {success && <p className="text-green-600 text-sm mb-4">{success}</p>}
 
         {['fullName', 'email', 'phone', 'college'].map((field) => (
           <input
