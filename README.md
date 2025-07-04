@@ -1,29 +1,65 @@
-# 🎫 College Event Booking System
+# 🎫 College Event Booking System · `v1.0.0`
 
-A full-stack web application where students can view and book upcoming college events.  
-Includes user registration/login, booking logic, and admin dashboard.
+A full-stack MERN web application that enables college students to **register, view, and book events online** in real time.  
+Built with a secure and scalable architecture using **MongoDB Atlas**, **React**, **Node.js**, and **Express** — designed for modern college event management.
 
-## 🚀 Tech Stack
-- **Frontend:** React.js, Tailwind CSS
-- **Backend:** Node.js, Express.js (upcoming)
-- **Database:** MongoDB (or MySQL)
-- **Auth:** JWT (upcoming)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Tech](https://img.shields.io/badge/built%20with-MERN%20Stack-orange)
 
-## 📌 Features (Planned)
-- [x] View Events (Homepage)
-- [x] User Registration / Login UI
-- [ ] Event Booking Functionality
-- [ ] Admin Panel to View Bookings
-- [ ] Backend Integration with MongoDB
-- [ ] Authentication with JWT
-- [ ] Deployment on Railway/Vercel
+---
 
-📝 Used MongoDB Atlas (cloud-based NoSQL DB) for scalable, secure data storage. Managed real-time data via MongoDB Compass for easier testing and debugging.
+## 🚀 Key Features
 
-## 🧑‍💻 Developed By
-- **Nitin Singh** (IIT Patna)
+### 🎟️ For Students
+- 🔐 **User Registration & Login** with input validations
+- 📅 **View All Available Events** on homepage
+- ⏰ **Event Time Slots & Date Selection**
+- 🪑 **Live Booking with Seat Limits** *(coming soon)*
+- 📧 Confirmation messages *(planned)*
 
-## 🌐 Live Demo
-Coming soon...
+### 🛠️ For Admin (Upcoming in v1.2+)
+- 📊 View all bookings and user details
+- ✏️ Add, edit, or delete event data
+- 📌 View seat availability in real-time
 
+---
 
+## 🧱 Tech Stack
+
+| Layer     | Technologies                         |
+|-----------|--------------------------------------|
+| Frontend  | React.js, Tailwind CSS, Axios        |
+| Backend   | Node.js, Express.js                  |
+| Database  | MongoDB Atlas, Mongoose              |
+| Auth      | JWT (JSON Web Tokens) *(coming soon)* |
+| Tools     | Vite, Toastify, React Router DOM     |
+
+---
+
+## 🌍 Live Demo
+
+> 🚧 Coming Soon — Deployed on **Vercel** (Frontend) + **Railway** (Backend)
+
+---
+
+## 📦 Project Structure
+
+```bash
+college-event-booking-system/
+│
+├── client/              # React frontend
+│   ├── pages/
+│   ├── components/
+│   ├── services/
+│   └── App.jsx
+│
+├── server/              # Node.js + Express backend (WIP)
+│   ├── routes/
+│   ├── controllers/
+│   ├── models/
+│   └── server.js
+│
+├── README.md
+├── LICENSE
+└── .env.example
