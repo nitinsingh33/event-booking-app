@@ -5,27 +5,26 @@ Built with a secure and scalable architecture using **MongoDB Atlas**, **React**
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Tech](https://img.shields.io/badge/built%20with-MERN%20Stack-orange)
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-### 🎟️ For Students
-- 🔐 **User Registration & Login** with input validations
-- 📅 **View All Available Events** on homepage
-- ⏰ **Event Time Slots & Date Selection**
-- 🪑 **Live Booking with Seat Limits** *(coming soon)*
-- 📧 Confirmation messages *(planned)*
+### For Students
+-  **User Registration & Login** with input validations
+-  **View All Available Events** on homepage
+-  **Event Time Slots & Date Selection**
+-  **Live Booking with Seat Limits** *(coming soon)*
+-  Confirmation messages *(planned)*
 
-### 🛠️ For Admin (Upcoming in v1.2+)
-- 📊 View all bookings and user details
-- ✏️ Add, edit, or delete event data
-- 📌 View seat availability in real-time
+### For Admin (Upcoming in v1.2+)
+-  View all bookings and user details
+-  Add, edit, or delete event data
+-  View seat availability in real-time
 
 ---
 
-## 🧱 Tech Stack
+## Tech Stack
 
 | Layer     | Technologies                         |
 |-----------|--------------------------------------|
@@ -37,13 +36,13 @@ Built with a secure and scalable architecture using **MongoDB Atlas**, **React**
 
 ---
 
-## 🌍 Live Demo
+## Live Demo
 
-> 🚧 Coming Soon — Deployed on **Vercel** (Frontend) + **Railway** (Backend)
+>  Coming Soon — Deployed on **Vercel** (Frontend) + **Railway** (Backend)
 
 ---
 
-## 📦 Project Structure
+## Project Structure
 
 ```bash
 college-event-booking-system/
