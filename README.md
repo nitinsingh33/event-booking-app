@@ -1,4 +1,5 @@
-# 🎫 College Event Booking System
+# 🎫 College Event Booking System `v1.0`
+
 
 A full-stack web application where students can view and book upcoming college events.  
 Includes user registration/login, booking logic, and admin dashboard.
