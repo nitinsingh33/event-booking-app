@@ -1,5 +1,6 @@
 # 🎫 College Event Booking System `v1.0`
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 
 A full-stack web application where students can view and book upcoming college events.  
 Includes user registration/login, booking logic, and admin dashboard.
