@@ -57,8 +57,7 @@ const Login = () => {
           />
           <span
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-2 cursor-pointer"
-          >
+            className="absolute right-3 top-2 cursor-pointer">         
             {showPassword ? "🙈" : "👁️"}
           </span>
         </div>
@@ -77,3 +76,4 @@ const Login = () => {
 };
 
 export default Login;
+
