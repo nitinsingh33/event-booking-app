@@ -1,6 +1,24 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
+
+// JWT verification middleware
+const verifyToken = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(400).json({ message: 'Invalid token.' });
+  }
+};
 
 // Get database connection from app locals
 const getDb = (req) => req.app.locals.db;
@@ -55,23 +73,172 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    const result = await db.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    // Get event details
+    const eventResult = await db.query(`
+      SELECT 
+        id,
+        name as title,
+        description,
+        event_type as type,
+        date,
+        location,
+        max_seats as "maxSeats",
+        available_seats as "availableSeats",
+        registration_fee as fee,
+        is_active,
+        created_at
+      FROM events 
+      WHERE id = $1 AND is_active = true
+    `, [eventId]);
     
-    if (result.rows.length === 0) {
+    if (eventResult.rows.length === 0) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    const event = result.rows[0];
+    const event = eventResult.rows[0];
+
+    // Get time slots for this event
+    const timeSlotsResult = await db.query(`
+      SELECT 
+        id,
+        start_time,
+        end_time,
+        max_seats,
+        available_seats
+      FROM time_slots 
+      WHERE event_id = $1 
+      ORDER BY start_time ASC
+    `, [eventId]);
 
     res.json({
       message: "Event retrieved successfully",
-      event
+      event,
+      timeSlots: timeSlotsResult.rows
     });
 
   } catch (error) {
     console.error("Get event error:", error);
     res.status(500).json({ 
       message: "Internal server error",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ✅ Register for Event with JWT Authentication (POST /api/events/register)
+router.post("/register", verifyToken, async (req, res) => {
+  const db = getDb(req);
+  
+  try {
+    const { eventId, timeSlotId } = req.body;
+    const userId = req.user.userId;
+    
+    if (!eventId) {
+      return res.status(400).json({ message: "Event ID is required" });
+    }
+
+    // Start transaction
+    await db.query('BEGIN');
+
+    try {
+      // Get user details
+      const userResult = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+      if (userResult.rows.length === 0) {
+        throw new Error('User not found');
+      }
+      const user = userResult.rows[0];
+
+      // Get event details
+      const eventResult = await db.query('SELECT * FROM events WHERE id = $1 AND is_active = true', [eventId]);
+      if (eventResult.rows.length === 0) {
+        throw new Error('Event not found or inactive');
+      }
+      const event = eventResult.rows[0];
+
+      // Check if user is already registered for this event
+      const existingRegistration = await db.query(
+        'SELECT * FROM event_registrations WHERE event_id = $1 AND user_id = $2',
+        [eventId, userId]
+      );
+      
+      if (existingRegistration.rows.length > 0) {
+        throw new Error('You are already registered for this event');
+      }
+
+      // Check and update seats
+      if (timeSlotId) {
+        // Time slot specific registration
+        const slotResult = await db.query(
+          'SELECT * FROM time_slots WHERE id = $1 AND event_id = $2',
+          [timeSlotId, eventId]
+        );
+        
+        if (slotResult.rows.length === 0) {
+          throw new Error('Time slot not found');
+        }
+        
+        const slot = slotResult.rows[0];
+        if (slot.available_seats <= 0) {
+          throw new Error('No seats available for this time slot');
+        }
+        
+        // Update time slot seats
+        await db.query(
+          'UPDATE time_slots SET available_seats = available_seats - 1 WHERE id = $1',
+          [timeSlotId]
+        );
+      } else {
+        // Regular event registration
+        if (event.available_seats <= 0) {
+          throw new Error('No seats available for this event');
+        }
+        
+        // Update event seats
+        await db.query(
+          'UPDATE events SET available_seats = available_seats - 1 WHERE id = $1',
+          [eventId]
+        );
+      }
+
+      // Generate ticket code
+      const ticketCode = `TKT-${eventId}-${userId}-${Date.now()}`;
+
+      // Create registration record
+      const registrationResult = await db.query(`
+        INSERT INTO event_registrations 
+        (event_id, user_id, time_slot_id, full_name, email, phone, college, ticket_code, registration_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+        RETURNING *
+      `, [
+        eventId,
+        userId,
+        timeSlotId || null,
+        user.name,
+        user.email,
+        user.phone || '',
+        user.college || '',
+        ticketCode
+      ]);
+
+      // Commit transaction
+      await db.query('COMMIT');
+
+      res.status(201).json({
+        message: "Registration successful!",
+        ticketId: ticketCode,
+        registration: registrationResult.rows[0]
+      });
+
+    } catch (error) {
+      // Rollback transaction
+      await db.query('ROLLBACK');
+      throw error;
+    }
+
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(400).json({ 
+      message: error.message || "Registration failed",
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

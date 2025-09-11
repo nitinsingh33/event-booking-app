@@ -4,8 +4,8 @@ import cors from "cors";
 import pkg from 'pg';
 const { Pool } = pkg;
 
-// Import routes (we'll update these to use raw SQL)
-import authRoute from "./routes/authRoute.js";
+// Import routes (enhanced for professional use)
+import authRoute from "./routes/authRouteProfessional.js";
 import testRoute from "./routes/testRoute.js";
 import eventRoute from "./routes/eventRoute.js";
 
