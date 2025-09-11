@@ -1,26 +1,38 @@
 import express from "express";
-import { EventService } from "../services/eventService.js";
-import { authenticateToken, requireOrganizer } from "../utils/auth.js";
 
 const router = express.Router();
 
+// Get database connection from app locals
+const getDb = (req) => req.app.locals.db;
+
 // ✅ Get All Events (GET /api/event)
 router.get("/", async (req, res) => {
+  const db = getDb(req);
+  
   try {
     const { type, search } = req.query;
     
-    let events;
-    if (search) {
-      events = await EventService.searchEvents(search);
-    } else if (type) {
-      events = await EventService.getEventsByType(type.toUpperCase());
-    } else {
-      events = await EventService.getAllEvents();
+    let query = 'SELECT * FROM events WHERE is_active = true';
+    let params = [];
+    
+    if (type) {
+      query += ' AND event_type = $1';
+      params.push(type.toUpperCase());
     }
+    
+    if (search) {
+      const searchIndex = params.length + 1;
+      query += ` AND (name ILIKE $${searchIndex} OR description ILIKE $${searchIndex} OR location ILIKE $${searchIndex})`;
+      params.push(`%${search}%`);
+    }
+    
+    query += ' ORDER BY date ASC';
+    
+    const result = await db.query(query, params);
 
     res.json({
       message: "Events retrieved successfully",
-      events
+      events: result.rows
     });
 
   } catch (error) {
@@ -34,6 +46,8 @@ router.get("/", async (req, res) => {
 
 // ✅ Get Event by ID (GET /api/event/:id)
 router.get("/:id", async (req, res) => {
+  const db = getDb(req);
+  
   try {
     const eventId = parseInt(req.params.id);
     
@@ -41,11 +55,13 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    const event = await EventService.getEventById(eventId);
+    const result = await db.query('SELECT * FROM events WHERE id = $1', [eventId]);
     
-    if (!event) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "Event not found" });
     }
+
+    const event = result.rows[0];
 
     res.json({
       message: "Event retrieved successfully",
@@ -61,70 +77,13 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ✅ Create Event (POST /api/event) - Admin/Organizer only
-router.post("/", authenticateToken, requireOrganizer, async (req, res) => {
-  try {
-    const {
-      name,
-      description,
-      eventType,
-      date,
-      startTime,
-      endTime,
-      location,
-      maxSeats,
-      registrationFee,
-      organizerName,
-      organizerContact,
-      imageUrl,
-      requirements,
-      timeSlots
-    } = req.body;
-
-    // Validation
-    if (!name || !eventType || !date || !startTime || !endTime || !location || !organizerName || !organizerContact) {
-      return res.status(400).json({ 
-        message: "Required fields: name, eventType, date, startTime, endTime, location, organizerName, organizerContact" 
-      });
-    }
-
-    const event = await EventService.createEvent({
-      name,
-      description,
-      eventType: eventType.toUpperCase(),
-      date: new Date(date),
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-      location,
-      maxSeats: maxSeats || 100,
-      availableSeats: maxSeats || 100,
-      registrationFee: registrationFee || 0,
-      organizerName,
-      organizerContact,
-      imageUrl,
-      requirements,
-      timeSlots
-    });
-
-    res.status(201).json({
-      message: "Event created successfully",
-      event
-    });
-
-  } catch (error) {
-    console.error("Create event error:", error);
-    res.status(500).json({ 
-      message: "Internal server error during event creation",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
 // ✅ Register for Event (POST /api/event/:id/register)
 router.post("/:id/register", async (req, res) => {
+  const db = getDb(req);
+  
   try {
     const eventId = parseInt(req.params.id);
-    const { fullName, email, phone, college, seats, timeSlotId, comments, userId } = req.body;
+    const { fullName, email, phone, college, seats, comments } = req.body;
 
     console.log("📥 Event Registration Request:", {
       eventId,
@@ -132,9 +91,7 @@ router.post("/:id/register", async (req, res) => {
       email,
       phone,
       college,
-      seats,
-      timeSlotId,
-      userId
+      seats
     });
 
     // Validation
@@ -154,23 +111,53 @@ router.post("/:id/register", async (req, res) => {
       return res.status(400).json({ message: "Invalid email format" });
     }
 
-    const registration = await EventService.registerForEvent({
-      eventId,
-      userId: userId || null, // Optional for guest registrations
-      timeSlotId: timeSlotId || null,
-      fullName,
-      email,
-      phone,
-      college,
-      seats,
-      comments
-    });
+    // Check if event exists and has available seats
+    const eventResult = await db.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ message: "Event not found" });
+    }
 
-    res.status(201).json({
-      message: "Registration successful! Your ticket has been generated.",
-      registration,
-      ticketCode: registration.ticketCode
-    });
+    const event = eventResult.rows[0];
+    
+    if (event.available_seats < seats) {
+      return res.status(400).json({ message: "Not enough seats available" });
+    }
+
+    // Generate unique ticket code
+    const ticketCode = `TICKET-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+    // Start transaction
+    await db.query('BEGIN');
+
+    try {
+      // Create registration
+      const registrationResult = await db.query(`
+        INSERT INTO event_registrations (event_id, full_name, email, phone, college, seats, comments, ticket_code) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        RETURNING *
+      `, [eventId, fullName, email, phone, college, seats, comments, ticketCode]);
+
+      // Update available seats
+      await db.query(
+        'UPDATE events SET available_seats = available_seats - $1 WHERE id = $2',
+        [seats, eventId]
+      );
+
+      await db.query('COMMIT');
+
+      const registration = registrationResult.rows[0];
+
+      res.status(201).json({
+        message: "Registration successful! Your ticket has been generated.",
+        registration,
+        ticketCode: registration.ticket_code
+      });
+
+    } catch (error) {
+      await db.query('ROLLBACK');
+      throw error;
+    }
 
   } catch (error) {
     console.error("Event registration error:", error);
@@ -183,14 +170,23 @@ router.post("/:id/register", async (req, res) => {
 
 // ✅ Get Registration by Ticket Code (GET /api/event/ticket/:ticketCode)
 router.get("/ticket/:ticketCode", async (req, res) => {
+  const db = getDb(req);
+  
   try {
     const { ticketCode } = req.params;
     
-    const registration = await EventService.getRegistrationByTicket(ticketCode);
+    const result = await db.query(`
+      SELECT er.*, e.name as event_name, e.date, e.start_time, e.end_time, e.location 
+      FROM event_registrations er 
+      JOIN events e ON er.event_id = e.id 
+      WHERE er.ticket_code = $1
+    `, [ticketCode]);
     
-    if (!registration) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "Ticket not found" });
     }
+
+    const registration = result.rows[0];
 
     res.json({
       message: "Ticket retrieved successfully",
@@ -206,32 +202,7 @@ router.get("/ticket/:ticketCode", async (req, res) => {
   }
 });
 
-// ✅ Cancel Registration (DELETE /api/event/registration/:id)
-router.delete("/registration/:id", authenticateToken, async (req, res) => {
-  try {
-    const registrationId = parseInt(req.params.id);
-    
-    if (isNaN(registrationId)) {
-      return res.status(400).json({ message: "Invalid registration ID" });
-    }
-
-    const cancelledRegistration = await EventService.cancelRegistration(registrationId);
-
-    res.json({
-      message: "Registration cancelled successfully",
-      registration: cancelledRegistration
-    });
-
-  } catch (error) {
-    console.error("Cancel registration error:", error);
-    res.status(400).json({ 
-      message: error.message || "Cancellation failed",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// ✅ Get Event Types (GET /api/event/types)
+// ✅ Get Event Types (GET /api/event/meta/types)
 router.get("/meta/types", (req, res) => {
   const eventTypes = [
     'WORKSHOP',

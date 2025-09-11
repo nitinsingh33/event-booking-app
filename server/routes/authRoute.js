@@ -1,19 +1,28 @@
 import express from "express";
-import { UserService } from "../services/userService.js";
-import { generateToken, authenticateToken } from "../utils/auth.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
+
+// Get database connection from app locals
+const getDb = (req) => req.app.locals.db;
+
+// Generate JWT token
+const generateToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
 
 // ✅ Signup Route (POST /api/auth/signup)
 router.post("/signup", async (req, res) => {
   const { name, email, password, college, studentId, phone } = req.body;
+  const db = getDb(req);
 
   // Input Validation
   if (!name || !email || !password) {
     return res.status(400).json({ message: "Name, email, and password are required." });
   }
 
-  // Validate email format (basic college email validation)
+  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ message: "Please provide a valid email address." });
@@ -21,20 +30,22 @@ router.post("/signup", async (req, res) => {
 
   try {
     // Check if user already exists
-    const existingUser = await UserService.findUserByEmail(email);
-    if (existingUser) {
+    const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
       return res.status(400).json({ message: "User already exists with this email." });
     }
 
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create user
-    const newUser = await UserService.createUser({
-      name,
-      email,
-      password,
-      college,
-      studentId,
-      phone
-    });
+    const result = await db.query(`
+      INSERT INTO users (name, email, password, college, student_id, phone) 
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING id, name, email, college, student_id, phone, role, created_at
+    `, [name, email, hashedPassword, college, studentId, phone]);
+
+    const newUser = result.rows[0];
 
     // Generate token
     const token = generateToken(newUser.id);
@@ -57,6 +68,7 @@ router.post("/signup", async (req, res) => {
 // ✅ Login Route (POST /api/auth/login)
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  const db = getDb(req);
 
   // Input Validation
   if (!email || !password) {
@@ -65,13 +77,16 @@ router.post("/login", async (req, res) => {
 
   try {
     // Find user by email
-    const user = await UserService.findUserByEmail(email);
-    if (!user) {
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
       return res.status(400).json({ message: "Invalid email or password." });
     }
 
+    const user = result.rows[0];
+
     // Verify password
-    const isPasswordValid = await UserService.verifyPassword(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: "Invalid email or password." });
     }
@@ -97,79 +112,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Get User Profile (GET /api/auth/profile)
-router.get("/profile", authenticateToken, async (req, res) => {
-  try {
-    const user = await UserService.findUserById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    res.json({
-      message: "Profile retrieved successfully",
-      user
-    });
-
-  } catch (error) {
-    console.error("Profile error:", error);
-    res.status(500).json({ 
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// ✅ Update User Profile (PUT /api/auth/profile)
-router.put("/profile", authenticateToken, async (req, res) => {
-  const { name, college, studentId, phone } = req.body;
-
-  try {
-    const updatedUser = await UserService.updateUser(req.user.id, {
-      name,
-      college,
-      studentId,
-      phone
-    });
-
-    res.json({
-      message: "Profile updated successfully",
-      user: updatedUser
-    });
-
-  } catch (error) {
-    console.error("Profile update error:", error);
-    res.status(500).json({ 
-      message: "Internal server error during profile update",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// ✅ Get User's Event Registrations (GET /api/auth/my-registrations)
-router.get("/my-registrations", authenticateToken, async (req, res) => {
-  try {
-    const registrations = await UserService.getUserRegistrations(req.user.id);
-    
-    res.json({
-      message: "Registrations retrieved successfully",
-      registrations
-    });
-
-  } catch (error) {
-    console.error("Registrations error:", error);
-    res.status(500).json({ 
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// ✅ Verify Token Route (POST /api/auth/verify)
-router.post("/verify", authenticateToken, (req, res) => {
-  res.json({
-    message: "Token is valid",
-    user: req.user
-  });
+// ✅ Simple test route
+router.get("/test", (req, res) => {
+  res.json({ message: "Auth route is working!" });
 });
 
 export default router;

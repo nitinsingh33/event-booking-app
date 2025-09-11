@@ -1,102 +1,55 @@
-import prisma from '../lib/prisma.js';
+import pkg from 'pg';
+const { Pool } = pkg;
 
-// Seed data for testing
-const sampleEvents = [
-  {
-    name: "Tech Symposium 2025",
-    description: "Annual technology symposium featuring latest innovations in AI and Machine Learning",
-    eventType: "TECHNICAL",
-    date: new Date("2025-10-15"),
-    startTime: new Date("2025-10-15T09:00:00"),
-    endTime: new Date("2025-10-15T17:00:00"),
-    location: "Main Auditorium",
-    maxSeats: 200,
-    availableSeats: 200,
-    registrationFee: 0,
-    organizerName: "Computer Science Department",
-    organizerContact: "cs@college.edu",
-    requirements: "Basic knowledge of programming"
-  },
-  {
-    name: "Cultural Festival",
-    description: "Celebrate diversity with music, dance, and art from around the world",
-    eventType: "CULTURAL",
-    date: new Date("2025-11-01"),
-    startTime: new Date("2025-11-01T18:00:00"),
-    endTime: new Date("2025-11-01T22:00:00"),
-    location: "Campus Grounds",
-    maxSeats: 500,
-    availableSeats: 500,
-    registrationFee: 10,
-    organizerName: "Student Council",
-    organizerContact: "council@college.edu"
-  },
-  {
-    name: "Career Workshop",
-    description: "Resume building and interview preparation workshop",
-    eventType: "WORKSHOP",
-    date: new Date("2025-09-25"),
-    startTime: new Date("2025-09-25T14:00:00"),
-    endTime: new Date("2025-09-25T16:00:00"),
-    location: "Conference Room A",
-    maxSeats: 50,
-    availableSeats: 50,
-    registrationFee: 0,
-    organizerName: "Career Services",
-    organizerContact: "careers@college.edu"
-  }
-];
+// Database connection
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'college_events_db',
+  user: 'college_app_user',
+  password: 'nitinsingh',
+});
 
-const sampleUsers = [
-  {
-    name: "John Doe",
-    email: "john.doe@college.edu",
-    password: "$2b$10$rQk5FQQqI7yI0WUyQZ5QYO3vQ3EqXJ5QwqJ4gQyJ7QqJ5QwqJ6QqJ7", // "password123"
-    college: "ABC College",
-    studentId: "CS2021001",
-    phone: "+1234567890",
-    role: "STUDENT"
-  },
-  {
-    name: "Admin User",
-    email: "admin@college.edu", 
-    password: "$2b$10$rQk5FQQqI7yI0WUyQZ5QYO3vQ3EqXJ5QwqJ4gQyJ7QqJ5QwqJ6QqJ7", // "password123"
-    college: "ABC College",
-    role: "ADMIN"
-  }
-];
-
+// Sample data for testing
 async function seedDatabase() {
   try {
-    console.log("🌱 Starting database seed...");
+    console.log('🌱 Starting database seed...');
 
-    // Create users
-    console.log("👥 Creating sample users...");
-    for (const userData of sampleUsers) {
-      await prisma.user.upsert({
-        where: { email: userData.email },
-        update: {},
-        create: userData
-      });
-    }
+    // Create sample users (with hashed passwords)
+    const hashedPassword = '$2b$10$rQk5FQQqI7yI0WUyQZ5QYO3vQ3EqXJ5QwqJ4gQyJ7QqJ5QwqJ6QqJ7'; // "password123"
+    
+    console.log('👥 Creating sample users...');
+    await pool.query(`
+      INSERT INTO users (name, email, password, college, student_id, phone, role) 
+      VALUES 
+        ('John Doe', 'john.doe@college.edu', $1, 'ABC College', 'CS2021001', '+1234567890', 'STUDENT'),
+        ('Jane Smith', 'jane.smith@college.edu', $1, 'ABC College', 'CS2021002', '+1234567891', 'STUDENT'),
+        ('Admin User', 'admin@college.edu', $1, 'ABC College', NULL, NULL, 'ADMIN')
+      ON CONFLICT (email) DO NOTHING
+    `, [hashedPassword]);
 
-    // Create events
-    console.log("🎉 Creating sample events...");
-    for (const eventData of sampleEvents) {
-      await prisma.event.upsert({
-        where: { name: eventData.name },
-        update: {},
-        create: eventData
-      });
-    }
+    console.log('🎉 Creating sample events...');
+    await pool.query(`
+      INSERT INTO events (name, description, event_type, date, start_time, end_time, location, max_seats, available_seats, registration_fee, organizer_name, organizer_contact, requirements) 
+      VALUES 
+        ('Tech Symposium 2025', 'Annual technology symposium featuring latest innovations in AI and Machine Learning', 'TECHNICAL', '2025-10-15', '2025-10-15 09:00:00', '2025-10-15 17:00:00', 'Main Auditorium', 200, 200, 0, 'Computer Science Department', 'cs@college.edu', 'Basic knowledge of programming'),
+        ('Cultural Festival', 'Celebrate diversity with music, dance, and art from around the world', 'CULTURAL', '2025-11-01', '2025-11-01 18:00:00', '2025-11-01 22:00:00', 'Campus Grounds', 500, 500, 10, 'Student Council', 'council@college.edu', NULL),
+        ('Career Workshop', 'Resume building and interview preparation workshop', 'WORKSHOP', '2025-09-25', '2025-09-25 14:00:00', '2025-09-25 16:00:00', 'Conference Room A', 50, 50, 0, 'Career Services', 'careers@college.edu', NULL),
+        ('Sports Meet 2025', 'Annual inter-college sports competition', 'SPORTS', '2025-12-05', '2025-12-05 08:00:00', '2025-12-05 18:00:00', 'Sports Complex', 1000, 1000, 0, 'Sports Department', 'sports@college.edu', 'Physical fitness required'),
+        ('Startup Pitch Competition', 'Pitch your startup ideas to industry experts', 'CONFERENCE', '2025-11-15', '2025-11-15 10:00:00', '2025-11-15 16:00:00', 'Innovation Center', 100, 100, 50, 'Entrepreneurship Cell', 'ecell@college.edu', 'Must have a startup idea')
+      ON CONFLICT DO NOTHING
+    `);
 
-    console.log("✅ Database seeded successfully!");
-    console.log(`📊 Created ${sampleUsers.length} users and ${sampleEvents.length} events`);
+    const userCount = await pool.query('SELECT COUNT(*) FROM users');
+    const eventCount = await pool.query('SELECT COUNT(*) FROM events');
+
+    console.log('✅ Database seeded successfully!');
+    console.log(`📊 Total users: ${userCount.rows[0].count}, Total events: ${eventCount.rows[0].count}`);
     
   } catch (error) {
-    console.error("❌ Error seeding database:", error);
+    console.error('❌ Error seeding database:', error);
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 
